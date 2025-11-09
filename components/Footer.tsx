@@ -50,16 +50,32 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact info */}
+          {/* About PhishGuard */}
           <div>
-            <h3 className="text-lg font-bold mb-3">Project Info</h3>
-            <p className="text-gray-400 text-sm">
-              Final Year Project
-              <br />
-              PhishGuard Detection System
-              <br />
-              PSM 2 - Demo 1 (40%)
+            <h3 className="text-lg font-bold mb-3">About PhishGuard</h3>
+            <p className="text-gray-400 text-sm mb-3">
+              Advanced phishing detection system with desktop integration
             </p>
+            <ul className="space-y-2 text-gray-400 text-sm">
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Real-time protection
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Desktop client
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                ML-powered detection
+              </li>
+            </ul>
           </div>
         </div>
 

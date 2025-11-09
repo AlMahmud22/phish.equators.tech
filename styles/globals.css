@@ -35,6 +35,11 @@ body {
     rgb(var(--background-start-rgb));
 }
 
+/* Smooth scrolling for the entire page */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Custom utility classes for PhishGuard - using Tailwind's @layer and @apply directives */
 @layer components {
   .btn-primary {
@@ -47,5 +52,29 @@ body {
   
   .card {
     @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
+  }
+}
+
+/* Custom animations for modern effects */
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .delay-1000 {
+    animation-delay: 1s;
+  }
+}
+
+/* Smooth gradient animation */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
