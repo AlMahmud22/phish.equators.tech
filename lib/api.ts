@@ -46,4 +46,30 @@ api.interceptors.response.use(
   }
 );
 
+/// API helper functions for dashboard endpoints
+
+/// fetch user scan history from backend
+export const fetchScanHistory = async () => {
+  const response = await api.get("/url/history");
+  return response.data;
+};
+
+/// fetch user statistics for analytics dashboard
+export const fetchUserStats = async () => {
+  const response = await api.get("/user/stats");
+  return response.data;
+};
+
+/// fetch user settings and preferences
+export const fetchUserSettings = async () => {
+  const response = await api.get("/user/settings");
+  return response.data;
+};
+
+/// update user settings and preferences
+export const updateUserSettings = async (settings: any) => {
+  const response = await api.put("/user/settings", settings);
+  return response.data;
+};
+
 export default api;

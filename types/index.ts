@@ -61,3 +61,53 @@ export interface ApiResponse<T = any> {
   message?: string;
   error?: string;
 }
+
+/// User settings for preferences and configuration
+export interface UserSettings {
+  id: string;
+  userId: string;
+  theme: "light" | "dark" | "auto";
+  notifications: {
+    email: boolean;
+    desktop: boolean;
+    phishingAlerts: boolean;
+  };
+  language: string;
+  timezone: string;
+  updatedAt: string;
+}
+
+/// Statistics data for charts and analytics
+export interface UserStats {
+  totalScans: number;
+  phishingDetected: number;
+  safeUrls: number;
+  scansByDate: {
+    date: string;
+    scans: number;
+    phishing: number;
+    safe: number;
+  }[];
+  topThreats: {
+    url: string;
+    count: number;
+  }[];
+  averageConfidence: number;
+}
+
+/// Scan history entry with full details
+export interface ScanHistory {
+  id: string;
+  url: string;
+  isPhishing: boolean;
+  confidence: number;
+  scanDate: string;
+  userId: string;
+  source: "desktop" | "web" | "api";
+  details: {
+    suspiciousPatterns?: string[];
+    domainAge?: number;
+    sslStatus?: string;
+    ipAddress?: string;
+  };
+}
