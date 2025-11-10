@@ -1,10 +1,16 @@
 /// TypeScript type definitions for PhishGuard entities
 
+export type UserRole = "user" | "tester" | "admin";
+export type AuthProvider = "credentials" | "google" | "github";
+
 /// User account information
 export interface User {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
+  provider?: AuthProvider;
+  providerId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,4 +116,121 @@ export interface ScanHistory {
     sslStatus?: string;
     ipAddress?: string;
   };
+}
+
+/// Admin - User management data
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  provider: AuthProvider;
+  isActive: boolean;
+  totalScans: number;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/// Admin - System log entry
+export interface AdminLog {
+  id: string;
+  timestamp: string;
+  level: "info" | "warning" | "error" | "critical";
+  action: string;
+  userId?: string;
+  userName?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  details: string;
+  metadata?: Record<string, any>;
+}
+
+/// Admin - Rate limit statistics
+export interface RateLimitData {
+  userId?: string;
+  endpoint: string;
+  limit: number;
+  current: number;
+  remaining: number;
+  resetAt: string;
+  windowStart: string;
+  violations: number;
+}
+
+/// Admin - Rate limit overview
+export interface RateLimitOverview {
+  totalRequests: number;
+  blockedRequests: number;
+  activeUsers: number;
+  topEndpoints: {
+    endpoint: string;
+    requests: number;
+    blocked: number;
+  }[];
+  recentViolations: {
+    userId: string;
+    userName: string;
+    endpoint: string;
+    timestamp: string;
+  }[];
+  configuration: {
+    globalLimit: number;
+    perUserLimit: number;
+    windowMinutes: number;
+  };
+}
+
+/// Admin - Activity metrics
+export interface ActivityData {
+  activeUsers: {
+    current: number;
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  scans: {
+    total: number;
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    byHour: {
+      hour: string;
+      count: number;
+    }[];
+  };
+  threats: {
+    detected: number;
+    blocked: number;
+    falsePositives: number;
+    topDomains: {
+      domain: string;
+      count: number;
+      lastSeen: string;
+    }[];
+  };
+  system: {
+    uptime: number;
+    responseTime: number;
+    errorRate: number;
+    memoryUsage: number;
+  };
+}
+
+/// Admin - Users list response
+export interface AdminUsersResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/// Admin - Logs list response
+export interface AdminLogsResponse {
+  logs: AdminLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

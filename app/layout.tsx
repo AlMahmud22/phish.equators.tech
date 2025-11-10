@@ -3,8 +3,8 @@ import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import AuthProvider from "@/components/AuthProvider";
 
-/// load Inter font from Google Fonts for modern typography
 const inter = Inter({ subsets: ["latin"] });
 
 /// comprehensive metadata configuration for SEO, social sharing, and browser display
@@ -92,8 +92,6 @@ export const viewport = {
   maximumScale: 5,
 };
 
-/// root layout component that wraps all pages with consistent structure
-/// includes header navigation and footer across entire application
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -102,16 +100,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} flex flex-col min-h-screen`}>
-        {/* Global navigation header */}
-        <Header />
-        
-        {/* Main content area - takes up remaining space */}
-        <main className="flex-1">
-          {children}
-        </main>
-        
-        {/* Global footer */}
-        <Footer />
+        <AuthProvider>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

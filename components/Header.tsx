@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
-/// Header component with navigation and PhishGuard branding
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: "/" });
+  };
 
   return (
     <header className="bg-white shadow-md border-b border-gray-200">
@@ -21,7 +27,6 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Desktop navigation links */}
           <div className="hidden md:flex items-center space-x-6">
             <Link
               href="/"
@@ -29,24 +34,44 @@ export default function Header() {
             >
               Home
             </Link>
-            <Link
-              href="/dashboard"
-              className="text-gray-700 hover:text-primary-600 transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/login"
-              className="text-gray-700 hover:text-primary-600 transition-colors"
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="btn-primary"
-            >
-              Register
-            </Link>
+            {isAuthenticated && (
+              <Link
+                href="/dashboard"
+                className="text-gray-700 hover:text-primary-600 transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
+            {!isAuthenticated ? (
+              <>
+                <Link
+                  href="/login"
+                  className="text-gray-700 hover:text-primary-600 transition-colors"
+                >
+                  Login
+                </Link>
+                <Link href="/register" className="btn-primary">
+                  Register
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="text-gray-700 text-sm">
+                  <span className="font-medium">{session?.user?.name}</span>
+                  {session?.user?.role && (
+                    <span className="ml-2 px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs">
+                      {session.user.role}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="text-gray-700 hover:text-primary-600 transition-colors"
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -80,7 +105,6 @@ export default function Header() {
           </button>
         </div>
 
-        {/* Mobile navigation menu */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-3">
             <Link
@@ -90,27 +114,53 @@ export default function Header() {
             >
               Home
             </Link>
-            <Link
-              href="/dashboard"
-              className="block text-gray-700 hover:text-primary-600 transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/login"
-              className="block text-gray-700 hover:text-primary-600 transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="block text-primary-600 font-semibold"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Register
-            </Link>
+            {isAuthenticated && (
+              <Link
+                href="/dashboard"
+                className="block text-gray-700 hover:text-primary-600 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+            )}
+            {!isAuthenticated ? (
+              <>
+                <Link
+                  href="/login"
+                  className="block text-gray-700 hover:text-primary-600 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="block text-primary-600 font-semibold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Register
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="text-gray-700 text-sm py-2">
+                  <span className="font-medium">{session?.user?.name}</span>
+                  {session?.user?.role && (
+                    <span className="ml-2 px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs">
+                      {session.user.role}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  className="block w-full text-left text-gray-700 hover:text-primary-600 transition-colors"
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
         )}
       </nav>

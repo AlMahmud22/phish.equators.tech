@@ -3,10 +3,9 @@
 import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
-import type { RegisterData, AuthResponse } from "@/types";
+import { signIn } from "next-auth/react";
+import type { RegisterData } from "@/types";
 
-/// Registration page - new user account creation
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<RegisterData>({
@@ -18,18 +17,15 @@ export default function RegisterPage() {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  /// handle form submission and user registration
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
 
-    /// validate password match
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
-    /// validate password strength
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters long");
       return;
@@ -38,29 +34,34 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      /// send registration request to backend API
-      const response = await api.post<AuthResponse>("/auth/register", {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      if (response.data.success && response.data.token) {
-        /// store authentication token in localStorage
-        localStorage.setItem("authToken", response.data.token);
-        
-        /// redirect to dashboard on successful registration
-        router.push("/dashboard");
+      const data = await response.json();
+
+      if (data.success) {
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (result?.ok) {
+          router.push("/dashboard");
+          router.refresh();
+        }
       } else {
-        setError(
-          response.data.message || "Registration failed. Please try again."
-        );
+        setError(data.message || "Registration failed. Please try again.");
       }
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to connect to server. Please check your connection."
-      );
+      setError("Unable to connect to server. Please check your connection.");
     } finally {
       setIsLoading(false);
     }

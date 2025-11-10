@@ -1,24 +1,23 @@
 import axios from "axios";
+import { getSession } from "next-auth/react";
 
-/// setup base axios instance for REST communication with PhishGuard backend
-/// this instance is configured to communicate with the API at phish.equators.site/api
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  /// timeout after 10 seconds
   timeout: 10000,
 });
 
-/// request interceptor to add authentication token to headers
 api.interceptors.request.use(
-  (config) => {
-    /// retrieve token from localStorage if available
-    const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    if (typeof window !== "undefined") {
+      const session = await getSession();
+      
+      if (session?.user) {
+        // Use NextAuth session token for external API calls
+        config.headers.Authorization = `Bearer ${session.user.id}`;
+      }
     }
     
     return config;
@@ -28,16 +27,13 @@ api.interceptors.request.use(
   }
 );
 
-/// response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    /// handle 401 unauthorized errors by clearing token and redirecting to login
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("authToken");
         window.location.href = "/login";
       }
     }
@@ -46,29 +42,119 @@ api.interceptors.response.use(
   }
 );
 
-/// API helper functions for dashboard endpoints
+// URL scanning functions
+export const scanUrl = async (url: string) => {
+  const response = await api.post("/url/scan", { url });
+  return response.data;
+};
 
-/// fetch user scan history from backend
 export const fetchScanHistory = async () => {
   const response = await api.get("/url/history");
   return response.data;
 };
 
-/// fetch user statistics for analytics dashboard
+export const getScanDetails = async (scanId: string) => {
+  const response = await api.get(`/url/scan/${scanId}`);
+  return response.data;
+};
+
+// User dashboard functions
 export const fetchUserStats = async () => {
   const response = await api.get("/user/stats");
   return response.data;
 };
 
-/// fetch user settings and preferences
 export const fetchUserSettings = async () => {
   const response = await api.get("/user/settings");
   return response.data;
 };
 
-/// update user settings and preferences
 export const updateUserSettings = async (settings: any) => {
   const response = await api.put("/user/settings", settings);
+  return response.data;
+};
+
+// tester role functions
+export const getSystemLogs = async (params?: {
+  page?: number;
+  limit?: number;
+  severity?: string;
+}) => {
+  const response = await api.get("/admin/logs", { params });
+  return response.data;
+};
+
+export const promoteUser = async (userId: string) => {
+  const response = await api.post(`/admin/users/${userId}/promote`);
+  return response.data;
+};
+
+export const demoteUser = async (userId: string) => {
+  const response = await api.post(`/admin/users/${userId}/demote`);
+  return response.data;
+};
+
+// admin role functions
+export const getAllUsers = async (params?: {
+  page?: number;
+  limit?: number;
+  role?: string;
+}) => {
+  const response = await api.get("/admin/users", { params });
+  return response.data;
+};
+
+export const updateUserRole = async (userId: string, role: string) => {
+  const response = await api.patch(`/admin/users/${userId}/role`, { role });
+  return response.data;
+};
+
+export const deleteUser = async (userId: string) => {
+  const response = await api.delete(`/admin/users/${userId}`);
+  return response.data;
+};
+
+export const getRateLimitStats = async () => {
+  const response = await api.get("/admin/rate-limits");
+  return response.data;
+};
+
+export const updateRateLimitConfig = async (config: {
+  maxRequests: number;
+  windowMs: number;
+}) => {
+  const response = await api.put("/admin/rate-limits", config);
+  return response.data;
+};
+
+export const getActivityLogs = async (params?: {
+  page?: number;
+  limit?: number;
+  userId?: string;
+  action?: string;
+  startDate?: string;
+  endDate?: string;
+}) => {
+  const response = await api.get("/admin/activity", { params });
+  return response.data;
+};
+
+export const exportActivityLogs = async (format: "csv" | "json") => {
+  const response = await api.get(`/admin/activity/export`, {
+    params: { format },
+    responseType: "blob",
+  });
+  return response.data;
+};
+
+export const getSystemHealth = async () => {
+  const response = await api.get("/admin/health");
+  return response.data;
+};
+
+// desktop app download
+export const getDesktopAppDownload = async (platform: "windows" | "mac" | "linux") => {
+  const response = await api.get(`/app/download/${platform}`);
   return response.data;
 };
 
