@@ -1,31 +1,18 @@
 /**
  * One-Time Code Generator for Desktop OAuth Flow
  * Generates, stores, and validates one-time codes for secure desktop authentication
+ * Uses MongoDB for persistent storage to work across multiple server instances
  */
 
 import { randomBytes } from "crypto";
-
-interface OneTimeCode {
-  userId: string;
-  email: string;
-  role: string;
-  createdAt: number;
-  expiresAt: number;
-  consumed: boolean;
-}
-
-/**
- * In-memory storage for one-time codes
- * For production, consider using Redis or database
- */
-const codeStore = new Map<string, OneTimeCode>();
+import dbConnect from "./db";
+import OneTimeCode from "./models/OneTimeCode";
 
 /**
  * Configuration
  */
 const CODE_LENGTH = 32; // Length of the code in bytes (64 hex characters)
 const CODE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // Clean up every 10 minutes
 
 /**
  * Generate a cryptographically secure one-time code
@@ -34,22 +21,27 @@ const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // Clean up every 10 minutes
  * @param role - User role
  * @returns The generated code
  */
-export function generateOneTimeCode(
+export async function generateOneTimeCode(
   userId: string,
   email: string,
   role: string
-): string {
+): Promise<string> {
+  await dbConnect();
+
   // Generate random code
   const code = randomBytes(CODE_LENGTH).toString("hex");
 
-  // Store code with metadata
+  // Store code in database
   const now = Date.now();
-  codeStore.set(code, {
+  const expiresAt = new Date(now + CODE_EXPIRY_MS);
+
+  await OneTimeCode.create({
+    code,
     userId,
     email,
     role,
-    createdAt: now,
-    expiresAt: now + CODE_EXPIRY_MS,
+    createdAt: new Date(now),
+    expiresAt,
     consumed: false,
   });
 
@@ -63,34 +55,37 @@ export function generateOneTimeCode(
  * @param code - The code to validate
  * @returns User data if valid, null if invalid/expired/consumed
  */
-export function validateAndConsumeCode(code: string): {
+export async function validateAndConsumeCode(code: string): Promise<{
   userId: string;
   email: string;
   role: string;
-} | null {
+} | null> {
+  await dbConnect();
+
   console.log(`[OneTimeCode] Validating code: ${code.substring(0, 8)}... (length: ${code.length})`);
-  console.log(`[OneTimeCode] Store size: ${codeStore.size} codes`);
-  
-  const data = codeStore.get(code);
+
+  // Find the code in database
+  const data = await OneTimeCode.findOne({ code });
 
   if (!data) {
-    console.log(`[OneTimeCode] Code not found in store`);
-    console.log(`[OneTimeCode] Available codes: ${Array.from(codeStore.keys()).map(k => k.substring(0, 8)).join(', ')}`);
+    const totalCodes = await OneTimeCode.countDocuments();
+    console.log(`[OneTimeCode] Code not found in database`);
+    console.log(`[OneTimeCode] Total codes in DB: ${totalCodes}`);
     return null;
   }
 
   const now = Date.now();
-  const ageSeconds = Math.floor((now - data.createdAt) / 1000);
-  const expiresInSeconds = Math.floor((data.expiresAt - now) / 1000);
+  const ageSeconds = Math.floor((now - data.createdAt.getTime()) / 1000);
+  const expiresInSeconds = Math.floor((data.expiresAt.getTime() - now) / 1000);
 
   console.log(`[OneTimeCode] Code found for user ${data.email}`);
   console.log(`[OneTimeCode] Code age: ${ageSeconds}s, expires in: ${expiresInSeconds}s`);
   console.log(`[OneTimeCode] Code consumed: ${data.consumed}`);
 
   // Check if expired
-  if (now > data.expiresAt) {
+  if (now > data.expiresAt.getTime()) {
     console.log(`[OneTimeCode] Code expired for user ${data.email}`);
-    codeStore.delete(code);
+    await OneTimeCode.deleteOne({ code });
     return null;
   }
 
@@ -102,11 +97,13 @@ export function validateAndConsumeCode(code: string): {
 
   // Mark as consumed
   data.consumed = true;
-  codeStore.set(code, data);
+  await data.save();
 
-  // Delete after a short delay to prevent replay attacks
-  setTimeout(() => {
-    codeStore.delete(code);
+  // Delete after use
+  setTimeout(async () => {
+    await OneTimeCode.deleteOne({ code }).catch(err => 
+      console.error('[OneTimeCode] Error deleting consumed code:', err)
+    );
   }, 1000);
 
   console.log(`[OneTimeCode] Code validated and consumed successfully for user ${data.email}`);
@@ -123,47 +120,30 @@ export function validateAndConsumeCode(code: string): {
  * @param code - The code to check
  * @returns Code information or null
  */
-export function getCodeInfo(code: string): OneTimeCode | null {
-  return codeStore.get(code) || null;
+export async function getCodeInfo(code: string) {
+  await dbConnect();
+  return await OneTimeCode.findOne({ code });
 }
 
 /**
- * Clean up expired codes
- * Called periodically to prevent memory leaks
+ * Clean up expired codes from database
  */
-export function cleanupExpiredCodes(): number {
-  const now = Date.now();
-  let cleaned = 0;
-
-  for (const [code, data] of codeStore.entries()) {
-    if (now > data.expiresAt) {
-      codeStore.delete(code);
-      cleaned++;
-    }
+export async function cleanupExpiredCodes(): Promise<number> {
+  await dbConnect();
+  const now = new Date();
+  const result = await OneTimeCode.deleteMany({ expiresAt: { $lt: now } });
+  
+  if (result.deletedCount > 0) {
+    console.log(`[OneTimeCode] Cleaned up ${result.deletedCount} expired codes`);
   }
 
-  if (cleaned > 0) {
-    console.log(`[OneTimeCode] Cleaned up ${cleaned} expired codes`);
-  }
-
-  return cleaned;
-}
-
-/**
- * Start automatic cleanup interval
- */
-export function startCleanupInterval(): NodeJS.Timeout {
-  return setInterval(cleanupExpiredCodes, CLEANUP_INTERVAL_MS);
+  return result.deletedCount;
 }
 
 /**
  * Get current store size (for monitoring)
  */
-export function getStoreSize(): number {
-  return codeStore.size;
-}
-
-// Start cleanup on module load
-if (typeof global !== "undefined") {
-  startCleanupInterval();
+export async function getStoreSize(): Promise<number> {
+  await dbConnect();
+  return await OneTimeCode.countDocuments();
 }

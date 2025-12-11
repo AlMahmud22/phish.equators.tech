@@ -14,25 +14,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: false,
         error: "Code parameter required",
-        storeSize: getStoreSize(),
+        storeSize: await getStoreSize(),
       });
     }
 
-    const info = getCodeInfo(code);
+    const info = await getCodeInfo(code);
 
     if (!info) {
       return NextResponse.json({
         success: false,
         found: false,
-        storeSize: getStoreSize(),
+        storeSize: await getStoreSize(),
         message: "Code not found in store",
       });
     }
 
     const now = Date.now();
-    const ageSeconds = Math.floor((now - info.createdAt) / 1000);
-    const expiresInSeconds = Math.floor((info.expiresAt - now) / 1000);
-    const isExpired = now > info.expiresAt;
+    const ageSeconds = Math.floor((now - info.createdAt.getTime()) / 1000);
+    const expiresInSeconds = Math.floor((info.expiresAt.getTime() - now) / 1000);
+    const isExpired = now > info.expiresAt.getTime();
 
     return NextResponse.json({
       success: true,
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       expiresInSeconds,
       isExpired,
       consumed: info.consumed,
-      storeSize: getStoreSize(),
+      storeSize: await getStoreSize(),
     });
   } catch (error: any) {
     return NextResponse.json({

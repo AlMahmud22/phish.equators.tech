@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Generate one-time authorization code
-    const code = generateOneTimeCode(
+    const code = await generateOneTimeCode(
       String(user._id),
       user.email,
       user.role
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       success: true,
       code,
       email: user.email,
-      storeSize: getStoreSize(),
+      storeSize: await getStoreSize(),
       message: "Code generated successfully. Use it within 5 minutes.",
     });
   } catch (error: any) {

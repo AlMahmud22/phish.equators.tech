@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     if (code) {
       console.log(`[Token] Code exchange requested: ${code.substring(0, 8)}...`);
       
-      const codeData = validateAndConsumeCode(code);
+      const codeData = await validateAndConsumeCode(code);
       
       if (!codeData) {
         return ErrorResponses.unauthorized(

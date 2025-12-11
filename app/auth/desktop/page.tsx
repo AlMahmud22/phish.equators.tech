@@ -38,13 +38,13 @@ export default async function DesktopAuthPage() {
   }
 
   // Generate one-time authorization code
-  const code = generateOneTimeCode(
+  const code = await generateOneTimeCode(
     String(user._id),
     user.email,
     user.role
   );
 
-  console.log(`[Desktop Auth] Generated code for ${user.email}`);
+  console.log(`[Desktop Auth] Generated code for ${user.email}: ${code.substring(0, 8)}...`);
 
   // Redirect to custom protocol URL
   // The desktop app will catch this and exchange the code for tokens
