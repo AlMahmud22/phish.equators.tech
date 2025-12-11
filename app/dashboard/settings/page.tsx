@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import SettingsForm from "@/components/SettingsForm";
+import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { fetchUserSettings, updateUserSettings } from "@/lib/api";
 import type { UserSettings, ApiResponse } from "@/types";
 
@@ -10,6 +12,7 @@ import type { UserSettings, ApiResponse } from "@/types";
 /// fetches from GET /api/user/settings and updates with PUT /api/user/settings
 export default function SettingsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,10 +135,9 @@ export default function SettingsPage() {
       {/* Settings form */}
       <SettingsForm settings={settings} onSave={handleSave} isLoading={isLoading} />
 
-      {/* Danger zone */}
-      <div className="card mt-6 border-2 border-red-200">
-        <h3 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h3>
-        
+      {/* Account data management */}
+      <div className="card mt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Management</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -146,18 +148,16 @@ export default function SettingsPage() {
               Export
             </button>
           </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-            <div>
-              <p className="font-medium text-gray-900">Delete Account</p>
-              <p className="text-sm text-gray-500">Permanently delete your account and all data</p>
-            </div>
-            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-              Delete
-            </button>
-          </div>
         </div>
       </div>
+
+      {/* Delete Account Section */}
+      {session?.user && (
+        <DeleteAccountSection 
+          userProvider={(session.user as any).provider || "credentials"}
+          userEmail={session.user.email || ""}
+        />
+      )}
 
       {/* Last updated info */}
       <div className="mt-6 text-center text-sm text-gray-500">

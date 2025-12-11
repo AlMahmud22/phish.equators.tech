@@ -4,6 +4,8 @@ import connectToDatabase from "@/lib/db";
 import User from "@/lib/models/User";
 import { logInfo, logError, logWarning, getClientIp, getUserAgent } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { validatePassword, generateSecureToken } from "@/lib/passwordValidation";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   const ipAddress = getClientIp(request.headers);
@@ -48,35 +50,53 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 6) {
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
       await logWarning(
         "Registration Failed",
-        "Password too short",
-        { ipAddress, userAgent, metadata: { email } }
+        "Weak password",
+        { ipAddress, userAgent, metadata: { email, feedback: passwordValidation.feedback } }
       );
       return NextResponse.json(
-        { success: false, message: "Password must be at least 6 characters" },
+        { 
+          success: false, 
+          message: "Password doesn't meet security requirements",
+          errors: passwordValidation.feedback
+        },
         { status: 400 }
       );
     }
 
     await connectToDatabase();
 
+    // Check if email exists with ANY provider (fix for duplicate emails)
     const existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
+      const providerMessage = existingUser.provider === 'credentials' 
+        ? 'with email and password' 
+        : `with ${existingUser.provider}`;
+      
       await logWarning(
         "Registration Failed",
         "Email already registered",
-        { ipAddress, userAgent, metadata: { email } }
+        { ipAddress, userAgent, metadata: { email, existingProvider: existingUser.provider } }
       );
       return NextResponse.json(
-        { success: false, message: "Email already registered" },
+        { 
+          success: false, 
+          message: `This email is already registered ${providerMessage}. Please login instead.` 
+        },
         { status: 400 }
       );
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+
+    // Generate verification token
+    const verificationToken = generateSecureToken(32);
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const user = await User.create({
       name,
@@ -84,9 +104,15 @@ export async function POST(request: Request) {
       passwordHash,
       provider: "credentials",
       role: "user",
+      emailVerified: false,
+      verificationToken,
+      verificationTokenExpires,
     });
 
     const userId = (user._id as any).toString();
+
+    // Send verification email
+    const emailSent = await sendVerificationEmail(user.email, user.name, verificationToken);
 
     await logInfo(
       "User Registration",
@@ -96,14 +122,18 @@ export async function POST(request: Request) {
         userName: name,
         ipAddress,
         userAgent,
-        metadata: { email, provider: "credentials" },
+        metadata: { email, provider: "credentials", emailSent },
       }
     );
 
     return NextResponse.json(
       {
         success: true,
-        message: "Account created successfully",
+        message: emailSent 
+          ? "Account created! Please check your email to verify your account."
+          : "Account created! Email verification required but email service is not configured.",
+        requiresVerification: true,
+        emailSent,
         user: {
           id: userId,
           name: user.name,

@@ -6,29 +6,70 @@ import { createSuccessResponse, ErrorResponses } from "@/lib/apiResponse";
 import dbConnect from "@/lib/db";
 import User from "@/lib/models/User";
 import Log from "@/lib/models/Log";
+import { validateAndConsumeCode } from "@/lib/oneTimeCode";
 
 /**
  * POST /api/auth/token
- * Exchange NextAuth session for JWT tokens (for desktop client)
+ * Exchange NextAuth session OR one-time code for JWT tokens (for desktop client)
+ * 
+ * Two modes:
+ * 1. Session mode: User has active NextAuth session (legacy)
+ * 2. Code mode: User provides one-time code from desktop OAuth flow
  */
 export async function POST(req: NextRequest) {
   try {
-    // Verify NextAuth session
-    const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user?.email) {
-      return ErrorResponses.unauthorized(
-        "You must be logged in to get API tokens"
-      );
+    // Parse request body
+    const body = await req.json().catch(() => ({}));
+    const { code } = body;
+
+    let user;
+    let authMethod: string;
+
+    // Mode 1: One-time code exchange (desktop OAuth flow)
+    if (code) {
+      console.log(`[Token] Code exchange requested: ${code.substring(0, 8)}...`);
+      
+      const codeData = validateAndConsumeCode(code);
+      
+      if (!codeData) {
+        return ErrorResponses.unauthorized(
+          "Invalid or expired authorization code"
+        );
+      }
+
+      await dbConnect();
+
+      // Get user from database
+      user = await User.findById(codeData.userId);
+
+      if (!user) {
+        return ErrorResponses.notFound("User account not found");
+      }
+
+      authMethod = "desktop_oauth_code";
+      console.log(`[Token] Code validated for user: ${user.email}`);
     }
+    // Mode 2: Session-based token exchange (legacy)
+    else {
+      // Verify NextAuth session
+      const session = await getServerSession(authOptions);
+      
+      if (!session || !session.user?.email) {
+        return ErrorResponses.unauthorized(
+          "You must be logged in or provide a valid code"
+        );
+      }
 
-    await dbConnect();
+      await dbConnect();
 
-    // Get user from database
-    const user = await User.findOne({ email: session.user.email });
+      // Get user from database
+      user = await User.findOne({ email: session.user.email });
 
-    if (!user) {
-      return ErrorResponses.notFound("User account not found");
+      if (!user) {
+        return ErrorResponses.notFound("User account not found");
+      }
+
+      authMethod = "session_exchange";
     }
 
     // Generate JWT token pair
@@ -46,6 +87,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         userAgent: req.headers.get("user-agent") || "unknown",
         purpose: "desktop_client",
+        method: authMethod,
       },
       ipAddress: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
       timestamp: new Date(),

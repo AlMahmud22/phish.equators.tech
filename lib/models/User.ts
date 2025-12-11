@@ -31,6 +31,15 @@ export interface IUser extends Document {
   role: UserRole;
   provider: AuthProvider;
   providerId?: string;
+  emailVerified: boolean;
+  verificationToken?: string;
+  verificationTokenExpires?: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+  linkedAccounts: {
+    provider: AuthProvider;
+    providerId: string;
+  }[];
   settings: IUserSettings;
   scanQuota: {
     hourly: number;
@@ -82,6 +91,31 @@ const UserSchema = new Schema<IUser>(
       type: String,
       sparse: true,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+      sparse: true,
+    },
+    verificationTokenExpires: {
+      type: Date,
+    },
+    resetPasswordToken: {
+      type: String,
+      sparse: true,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
+    linkedAccounts: [{
+      provider: {
+        type: String,
+        enum: ["credentials", "google", "github"],
+      },
+      providerId: String,
+    }],
     settings: {
       notifications: {
         email: { type: Boolean, default: true },

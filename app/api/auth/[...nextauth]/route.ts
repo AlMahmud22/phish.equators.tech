@@ -31,6 +31,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid email or password");
         }
 
+        // Check if email is verified
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
+        }
+
         const isValidPassword = await bcrypt.compare(
           credentials.password,
           user.passwordHash
@@ -83,20 +88,70 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google" || account?.provider === "github") {
         await connectToDatabase();
 
-        await User.findOneAndUpdate(
-          {
-            provider: account.provider,
-            providerId: account.providerAccountId,
-          },
-          {
+        // Check if email already exists with ANY provider
+        const existingUser = await User.findOne({ email: user.email });
+
+        if (existingUser) {
+          // If user exists with same provider, just update
+          if (existingUser.provider === account.provider && 
+              existingUser.providerId === account.providerAccountId) {
+            await User.findOneAndUpdate(
+              { _id: existingUser._id },
+              {
+                name: user.name,
+                email: user.email,
+              }
+            );
+            return true;
+          }
+
+          // If user exists with different provider, check if we should link accounts
+          if (existingUser.provider !== account.provider) {
+            // Check if this OAuth provider is already linked
+            const isAlreadyLinked = existingUser.linkedAccounts?.some(
+              (acc: any) => acc.provider === account.provider && acc.providerId === account.providerAccountId
+            );
+
+            if (isAlreadyLinked) {
+              return true; // Already linked, allow sign in
+            }
+
+            // Auto-link OAuth accounts if email is verified or it's an OAuth account
+            if (existingUser.emailVerified || existingUser.provider !== 'credentials') {
+              await User.findOneAndUpdate(
+                { _id: existingUser._id },
+                {
+                  $addToSet: {
+                    linkedAccounts: {
+                      provider: account.provider,
+                      providerId: account.providerAccountId,
+                    }
+                  }
+                }
+              );
+              return true; // Linked successfully
+            } else {
+              // Don't allow OAuth login if credentials account exists but unverified
+              throw new Error(
+                `This email is already registered. Please verify your email first or login with your password.`
+              );
+            }
+          }
+        } else {
+          // No existing user, create new one
+          await User.create({
             name: user.name,
             email: user.email,
             provider: account.provider,
             providerId: account.providerAccountId,
             role: "user",
-          },
-          { upsert: true, new: true }
-        );
+            emailVerified: true, // OAuth emails are pre-verified
+            linkedAccounts: [{
+              provider: account.provider,
+              providerId: account.providerAccountId,
+            }],
+          });
+        }
       }
 
       return true;

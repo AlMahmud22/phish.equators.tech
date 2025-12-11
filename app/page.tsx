@@ -1,7 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 /// Home page - Modern landing page with PhishGuard introduction
 export default function Home() {
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+
   return (
     <div className="min-h-screen">
       {/* Hero section - Modern gradient design */}
@@ -27,20 +33,32 @@ export default function Home() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link 
-                href="/register" 
-                className="group relative px-8 py-4 bg-primary-600 text-white rounded-xl font-semibold text-lg overflow-hidden transition-all hover:bg-primary-700 hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/50"
-              >
-                <span className="relative z-10">Start Protecting Now</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </Link>
-              
-              <Link 
-                href="/login" 
-                className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold text-lg border border-white/20 hover:bg-white/20 transition-all hover:scale-105"
-              >
-                Sign In
-              </Link>
+              {isAuthenticated ? (
+                <Link 
+                  href="/dashboard" 
+                  className="group relative px-8 py-4 bg-primary-600 text-white rounded-xl font-semibold text-lg overflow-hidden transition-all hover:bg-primary-700 hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/50"
+                >
+                  <span className="relative z-10">Go to Dashboard</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </Link>
+              ) : (
+                <>
+                  <Link 
+                    href="/register" 
+                    className="group relative px-8 py-4 bg-primary-600 text-white rounded-xl font-semibold text-lg overflow-hidden transition-all hover:bg-primary-700 hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/50"
+                  >
+                    <span className="relative z-10">Start Protecting Now</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </Link>
+                  
+                  <Link 
+                    href="/login" 
+                    className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold text-lg border border-white/20 hover:bg-white/20 transition-all hover:scale-105"
+                  >
+                    Sign In
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

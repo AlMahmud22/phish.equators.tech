@@ -105,7 +105,7 @@ export default function SettingsForm({ settings, onSave, isLoading = false }: Se
               id="language"
               value={formData.language}
               onChange={(e) => handleChange("language", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="en">English</option>
               <option value="es">Spanish</option>
@@ -124,7 +124,7 @@ export default function SettingsForm({ settings, onSave, isLoading = false }: Se
               id="timezone"
               value={formData.timezone}
               onChange={(e) => handleChange("timezone", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="UTC">UTC</option>
               <option value="America/New_York">Eastern Time (US)</option>
@@ -223,7 +223,7 @@ export default function SettingsForm({ settings, onSave, isLoading = false }: Se
               type="password"
               id="currentPassword"
               placeholder="Enter current password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
           
@@ -235,7 +235,7 @@ export default function SettingsForm({ settings, onSave, isLoading = false }: Se
               type="password"
               id="newPassword"
               placeholder="Enter new password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
           
@@ -247,7 +247,7 @@ export default function SettingsForm({ settings, onSave, isLoading = false }: Se
               type="password"
               id="confirmPassword"
               placeholder="Confirm new password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
 

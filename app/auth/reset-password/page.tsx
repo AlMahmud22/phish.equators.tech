@@ -1,38 +1,34 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { RegisterData } from "@/types";
+import { useRouter, useSearchParams } from "next/navigation";
 
-interface PasswordStrength {
-  score: number;
-  label: string;
-  color: string;
-}
-
-export default function RegisterPage() {
+function ResetPasswordForm() {
   const router = useRouter();
-  const [formData, setFormData] = useState<RegisterData>({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [error, setError] = useState<string>("");
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
-  const [success, setSuccess] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
+  const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     label: "Weak",
     color: "bg-red-500",
   });
-  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      setError("Invalid or missing reset token");
+    }
+  }, [token]);
 
   // Calculate password strength
   useEffect(() => {
-    const password = formData.password;
     if (!password) {
       setPasswordStrength({ score: 0, label: "Weak", color: "bg-red-500" });
       return;
@@ -67,53 +63,54 @@ export default function RegisterPage() {
     }
 
     setPasswordStrength({ score, label, color });
-  }, [formData.password]);
+  }, [password]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setErrors([]);
-    setSuccess("");
 
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+
+    if (!token) {
+      setError("Invalid reset token");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/register", {
+      const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
+        body: JSON.stringify({ token, password }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setSuccess(data.message);
-        setShowVerificationMessage(true);
-        // Don't auto-login - user needs to verify email first
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/login");
+        }, 3000);
       } else {
         if (data.errors && Array.isArray(data.errors)) {
           setErrors(data.errors);
         } else {
-          setError(data.message || "Registration failed. Please try again.");
+          setError(data.message || "Failed to reset password");
         }
       }
-    } catch (err: any) {
-      setError("Unable to connect to server. Please check your connection.");
+    } catch (err) {
+      setError("Unable to connect to server. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (showVerificationMessage) {
+  if (success) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
         <div className="max-w-md w-full">
@@ -121,24 +118,15 @@ export default function RegisterPage() {
             <div className="text-center">
               <div className="mb-4 text-6xl">✅</div>
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                Check Your Email!
+                Password Reset Successful!
               </h1>
               <p className="text-gray-600 mb-6">
-                We've sent a verification link to <strong>{formData.email}</strong>
+                Your password has been changed successfully.
               </p>
               <p className="text-gray-600 mb-6">
-                Please click the link in the email to verify your account before logging in.
+                You can now login with your new password. Redirecting to login page...
               </p>
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-6">
-                <p className="text-sm">
-                  <strong>Didn't receive the email?</strong><br />
-                  Check your spam folder or wait a few minutes and try again.
-                </p>
-              </div>
-              <Link
-                href="/login"
-                className="inline-block btn-primary"
-              >
+              <Link href="/login" className="inline-block btn-primary">
                 Go to Login
               </Link>
             </div>
@@ -152,24 +140,21 @@ export default function RegisterPage() {
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="card">
-          {/* Page header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Create Account
+              Reset Password
             </h1>
             <p className="text-gray-600">
-              Join PhishGuard to protect yourself from phishing attacks
+              Enter your new password below
             </p>
           </div>
 
-          {/* Error message display */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
               {error}
             </div>
           )}
 
-          {/* Validation errors */}
           {errors.length > 0 && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
               <p className="font-semibold mb-2">Password requirements:</p>
@@ -181,80 +166,38 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Registration form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name input */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Full Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black placeholder-gray-500"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="John Doe"
-              />
-            </div>
-
-            {/* Email input */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black placeholder-gray-500"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="your.email@example.com"
-              />
-            </div>
-
-            {/* Password input */}
             <div>
               <label
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Password
+                New Password
               </label>
               <input
                 type="password"
                 id="password"
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black placeholder-gray-500"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
               />
-              
+
               {/* Password strength indicator */}
-              {formData.password && (
+              {password && (
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-gray-600">Password strength:</span>
-                    <span className={`text-xs font-semibold ${
-                      passwordStrength.score >= 4 ? 'text-green-600' :
-                      passwordStrength.score >= 3 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
+                    <span
+                      className={`text-xs font-semibold ${
+                        passwordStrength.score >= 4
+                          ? "text-green-600"
+                          : passwordStrength.score >= 3
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }`}
+                    >
                       {passwordStrength.label}
                     </span>
                   </div>
@@ -271,52 +214,54 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Confirm password input */}
             <div>
               <label
                 htmlFor="confirmPassword"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Confirm Password
+                Confirm New Password
               </label>
               <input
                 type="password"
                 id="confirmPassword"
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black placeholder-gray-500"
-                value={formData.confirmPassword}
-                onChange={(e) =>
-                  setFormData({ ...formData, confirmPassword: e.target.value })
-                }
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
               />
-              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+              {confirmPassword && password !== confirmPassword && (
                 <p className="text-xs text-red-600 mt-1">Passwords don't match</p>
               )}
             </div>
 
-            {/* Submit button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !token}
               className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {isLoading ? "Resetting..." : "Reset Password"}
             </button>
           </form>
 
-          {/* Link to login page */}
           <p className="mt-6 text-center text-gray-600">
-            Already have an account?{" "}
             <Link
               href="/login"
               className="text-primary-600 hover:text-primary-700 font-semibold"
             >
-              Login here
+              Back to Login
             </Link>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
