@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useRef, FormEvent } from "react";
+import { useState, useRef, FormEvent, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import type { LoginCredentials } from "@/types";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: "",
@@ -16,12 +17,15 @@ export default function LoginPage() {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const hasRedirected = useRef(false);
+  
+  // Get callbackUrl from URL params, default to /dashboard
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
-  /// redirect to dashboard if already authenticated
+  /// redirect to callback URL if already authenticated
   /// use ref to prevent redirect loop
   if (status === "authenticated" && !hasRedirected.current) {
     hasRedirected.current = true;
-    router.replace("/dashboard");
+    router.replace(callbackUrl);
     return null;
   }
 
@@ -40,7 +44,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error);
       } else if (result?.ok) {
-        router.push("/dashboard");
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch (err: any) {
@@ -53,7 +57,7 @@ export default function LoginPage() {
   const handleOAuthSignIn = async (provider: "google" | "github") => {
     setIsLoading(true);
     try {
-      await signIn(provider, { callbackUrl: "/dashboard" });
+      await signIn(provider, { callbackUrl });
     } catch (err) {
       setError(`Failed to sign in with ${provider}`);
       setIsLoading(false);
